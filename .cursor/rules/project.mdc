@@ -1,0 +1,18 @@
+---
+alwaysApply: true
+---
+
+## 项目简介
+当前项目是一个Oasis与以太坊EVM跨链交互的开发环境，
+
+## 技术架构
+1. Oasis sapphire
+2. Oasis OPL（Hyperlane， Router Protocol， OPL SDK， celer IM）
+3. 以太坊EVM
+
+## 开源库
+Oasis 官方开源合约库
+
+## 开发环境
+1. hardhat
+2. 

@@ -1,0 +1,158 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+pragma solidity ^0.8.24;
+
+import {
+    IERC20Metadata
+} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {
+    IERC20Errors
+} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import {
+    SignatureRSV
+} from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
+import {
+    Sapphire
+} from "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol";
+
+import {IdentitySalt} from "./IdentitySalt.sol";
+import {PrivacyEIP712} from "./PrivacyEIP712.sol";
+
+/**
+ * @title PrivacyERC20Internal
+ * @notice Abstract contract encapsulating internal variables and helpers for PrivacyERC20WithUserId
+ */
+abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP712 {
+    // Encrypted state variables
+    bytes32 internal _globalNonce;
+    mapping(bytes32 => bytes) internal _encryptedBalances;
+    mapping(bytes32 => mapping(bytes32 => uint256)) internal _allowances;
+
+    // Replay protection for signatures
+    mapping(bytes32 => bool) internal _usedSignatures;
+
+    // Underlying ERC20 token for wrap/unwrap
+    IERC20Metadata public immutable underlyingToken;
+
+    constructor(
+        address underlyingToken_,
+        bytes memory pers_
+    )
+        IdentitySalt(pers_)
+        PrivacyEIP712("Privacy ERC20 Token with UserId", "1")
+    {
+        underlyingToken = IERC20Metadata(underlyingToken_);
+        _globalNonce = bytes32(Sapphire.randomBytes(32, ""));
+    }
+
+    // Privacy encryption & decryption
+    function _encryptBalance(
+        uint256 balance
+    ) internal view returns (bytes memory) {
+        bytes memory data = abi.encodePacked(balance);
+        return Sapphire.encrypt(bytes32(0), _globalNonce, data, "");
+    }
+
+    function _decryptBalance(bytes32 userId) internal view returns (uint256) {
+        bytes memory data = _encryptedBalances[userId];
+        if (data.length == 0) {
+            return 0;
+        }
+
+        bytes memory decryptedData = Sapphire.decrypt(
+            bytes32(0),
+            _globalNonce,
+            data,
+            ""
+        );
+
+        return abi.decode(decryptedData, (uint256));
+    }
+
+    function _setEncryptedBalance(bytes32 userId, uint256 balance) internal {
+        _encryptedBalances[userId] = _encryptBalance(balance);
+    }
+
+    // Core transfer logic
+    function _transfer(address from, address to, uint256 value) internal {
+        if (from == address(0)) {
+            revert ERC20InvalidSender(address(0));
+        }
+        if (to == address(0)) {
+            revert ERC20InvalidReceiver(address(0));
+        }
+
+        bytes32 fromId = _getUserId(from);
+        bytes32 toId = _getUserId(to);
+
+        uint256 fromBalance = _decryptBalance(fromId);
+        if (fromBalance < value) {
+            revert ERC20InsufficientBalance(from, fromBalance, value);
+        }
+
+        uint256 toBalance = _decryptBalance(toId);
+
+        _setEncryptedBalance(fromId, fromBalance - value);
+        _setEncryptedBalance(toId, toBalance + value);
+    }
+
+    // Core approve logic
+    function _approve(address owner, address spender, uint256 value) internal {
+        if (owner == address(0)) {
+            revert ERC20InvalidApprover(address(0));
+        }
+        if (spender == address(0)) {
+            revert ERC20InvalidSpender(address(0));
+        }
+        
+        bytes32 ownerId = _getUserId(owner);
+        bytes32 spenderId = _getUserId(spender);
+        _allowances[ownerId][spenderId] = value;
+    }
+
+    // Spend allowance helper
+    function _spendAllowance(
+        address owner,
+        address spender,
+        uint256 value
+    ) internal {
+        bytes32 ownerId = _getUserId(owner);
+        bytes32 spenderId = _getUserId(spender);
+        uint256 currentAllowance = _allowances[ownerId][spenderId];
+        
+        if (currentAllowance < type(uint256).max) {
+            if (currentAllowance < value) {
+                revert ERC20InsufficientAllowance(
+                    spender,
+                    currentAllowance,
+                    value
+                );
+            }
+            unchecked {
+                _approve(owner, spender, currentAllowance - value);
+            }
+        }
+    }
+
+    // Replay protection signature checking
+    function _getHash(
+        SignatureRSV memory signature
+    ) internal pure returns (bytes32) {
+        return
+            keccak256(abi.encodePacked(signature.r, signature.s, signature.v));
+    }
+
+    function _isSignatureUsed(
+        SignatureRSV memory signature
+    ) internal view returns (bool) {
+        bytes32 sigHash = _getHash(signature);
+        return _usedSignatures[sigHash];
+    }
+
+    function _checkSignatureUsed(
+        SignatureRSV memory signature
+    ) internal view returns (bool) {
+        bool isUsed = _isSignatureUsed(signature);
+        if (isUsed) revert InvalidSignature();
+        return isUsed;
+    }
+}

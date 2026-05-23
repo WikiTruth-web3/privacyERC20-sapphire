@@ -1,0 +1,44 @@
+---
+alwaysApply: true
+---
+
+## 项目路径
+
+## 部署文件结构
+
+```
+/
+├──contracts/                  # 当前开发合约
+├──contracts-others/           # 其它开发合约
+├──ignition/
+│       ├── modules/           # 部署模块定义
+│       │   └── Secret/
+│       │       ├── test/              # 测试脚本
+│       │       ├── data/              # 部署合约数据（合约地址、参数等）
+│       │       ├── Secret.ts              # 基础部署模块
+│       │       └── SecretWithParams.ts    # 带参数的部署模块
+│       ├── deployments/       # 部署结果（自动生成）
+│       │   └── [network]/     # 按网络分类的部署信息
+│       └── README.md         # 部署说明文件
+
+```
+
+## 部署方式
+优先使用ignition方式部署，保证编译文件的持久化。
+
+
+### 直接使用 hardhat 命令
+以`@/Secret/Secret.ts`该部署脚本文件为例
+```bash
+# 部署到测试网
+hardhat ignition deploy ignition/modules/Secret/Secret.ts --network sapphire-testnet
+
+# 部署到本地网络
+hardhat ignition deploy ignition/modules/Secret/Secret.ts --network sapphire_localnet
+```
+
+### 验证
+
+
+
+### 测试脚本

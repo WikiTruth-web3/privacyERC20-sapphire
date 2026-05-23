@@ -1,0 +1,42 @@
+{
+  "network": "sapphire_testnet",
+  "chainId": 23295,
+  "deployer": "0x85d526809D03d17b0dBA17372Bae2E156958F260",
+  "timestamp": "2025-10-09T02:51:28.576Z",
+  "coreContracts": {
+    "UniswapV3Factory": "0x7fCd1598bfCb2f6983dEA9578a2b9e0649A7B748",
+    "WETH9": "0x3B83C3F98480F99A92a0F0C456164103fA199Ad7"
+  },
+  "peripheryContracts": {
+    "NFTDescriptor": "0x31efe55FF689eC3B8b8CCB38fB38055BC30500e5",
+    "NonfungibleTokenPositionDescriptor": "0x44F3B85C25B413dDeE9024310D2820D29f85Bd4A",
+    "NonfungiblePositionManager": "0x8351289BD56A7304Cd14faDd0F3eacF2FFCAA51b",
+    "SwapRouter": "0x5495e898AE95a5449fE5Fb2083bB504Ff5C27ee7",
+    "Quoter": "0x6b9ADf1C5bE136ba4c7579a7146b0fF187e6F4c6",
+    "QuoterV2": "0xD2f860afC3b446ad61a8a067ee4C6A2Ab911db18",
+    "TickLens": "0x9885800eC49F2dD945284eb43DF495DF2104EEfF",
+    "V3Migrator": "0xab1a5EB507D2a349e4fA1efef21433b48F67F81f"
+  },
+  "transactionHashes": {
+    "NFTDescriptor": "0xf55bb25c4e8fa3fc060f161f13c81e907d890e3b7c18ef2f08a4a3f9f2095e56",
+    "NonfungibleTokenPositionDescriptor": "0x71e7b183c2cf803e481cd7bc1cbf140e0f6092cf0184c5be4d42e8994244dad0",
+    "NonfungiblePositionManager": "0xf6ff581490f17b62e6c124f3b62f9e448a5fc115ac3983777bd0f2730f7316bf",
+    "SwapRouter": "0x118a941ab9f45a71b47aa20a609df69c1d78ad687f9b4137d198c32cb8c29b49",
+    "Quoter": "0x246958c35f8bad70970c3d6a5f496118a94b8cbfb3da56a5c952f634c2a26f94",
+    "QuoterV2": "0x1b4ad118a5d2e68c52f02e33edd01eb26bfa5d1a93b43c74c052bdb645efdf4b",
+    "TickLens": "0xe6c972d45d2dd031bef4586012f9820ea3d126b4e84fff513e551e2e9e1c65b2",
+    "V3Migrator": "0x5eaac5d96c81c35d8a1970dbf396014135cec44e9682dda4a99aaf0a879f3fae"
+  },
+  "allContracts": {
+    "UniswapV3Factory": "0x7fCd1598bfCb2f6983dEA9578a2b9e0649A7B748",
+    "WETH9": "0x3B83C3F98480F99A92a0F0C456164103fA199Ad7",
+    "NFTDescriptor": "0x31efe55FF689eC3B8b8CCB38fB38055BC30500e5",
+    "NonfungibleTokenPositionDescriptor": "0x44F3B85C25B413dDeE9024310D2820D29f85Bd4A",
+    "NonfungiblePositionManager": "0x8351289BD56A7304Cd14faDd0F3eacF2FFCAA51b",
+    "SwapRouter": "0x5495e898AE95a5449fE5Fb2083bB504Ff5C27ee7",
+    "Quoter": "0x6b9ADf1C5bE136ba4c7579a7146b0fF187e6F4c6",
+    "QuoterV2": "0xD2f860afC3b446ad61a8a067ee4C6A2Ab911db18",
+    "TickLens": "0x9885800eC49F2dD945284eb43DF495DF2104EEfF",
+    "V3Migrator": "0xab1a5EB507D2a349e4fA1efef21433b48F67F81f"
+  }
+}
