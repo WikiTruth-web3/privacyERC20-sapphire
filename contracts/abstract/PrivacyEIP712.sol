@@ -23,13 +23,11 @@ abstract contract PrivacyEIP712 is PrivacyERC20Error {
             "EIP712Permit(uint8 label,address owner,address spender,uint256 amount,uint256 deadline)"
         );
 
-    bytes32 public constant GET_USER_ID_TYPEHASH =
-        keccak256("GetUserId(address user,uint256 deadline)");
-
     enum PermitLabel {
         VIEW,
         TRANSFER,
-        APPROVE
+        APPROVE,
+        VIRTUAL_ADDRESS
     }
 
     struct EIP712Permit {
@@ -88,6 +86,10 @@ abstract contract PrivacyEIP712 is PrivacyERC20Error {
         if (label_ != permit.label) revert InvalidPermitLabel();
         if (permit.label == PermitLabel.VIEW) {
             if (permit.amount != 0) revert InvalidPermitAmount();
+        }
+        if (permit.label == PermitLabel.VIRTUAL_ADDRESS) {
+            if (permit.amount != 0) revert InvalidPermitAmount();
+            if (permit.spender != address(0)) revert InvalidPermitAmount();
         }
 
         bytes32 structHash = keccak256(

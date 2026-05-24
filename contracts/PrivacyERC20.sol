@@ -61,6 +61,7 @@ contract PrivacyERC20 is
     function totalSupply() public view virtual returns (uint256) {
         return underlyingToken.balanceOf(address(this));
     }
+    
 
     // Balance query
     function balanceOf(address account) public view virtual returns (uint256) {
@@ -123,7 +124,7 @@ contract PrivacyERC20 is
         address senderVirtual = _getVirtualAddress(_msgSender());
         address toVirtual = _checkContracts(to);
 
-        _spendAllowance(ownerVirtual, senderVirtual, value);
+        _checkSpendAllowance(ownerVirtual, senderVirtual, value);
         _transfer(ownerVirtual, toVirtual, value);
         return true;
     }
@@ -195,6 +196,8 @@ contract PrivacyERC20 is
         underlyingToken.transfer(msg.sender, amount);
     }
 
+    // ===============================================================================================
+
     // Replay protection signature checking
     function isSignatureUsed(
         SignatureRSV memory signature
@@ -204,18 +207,9 @@ contract PrivacyERC20 is
 
     // New interface to query a user's virtual address via EIP-712 signature (for EOA)
     function getMyVirtualAddress(
-        address user,
-        uint256 deadline,
-        SignatureRSV memory signature
-    ) external view validDeadline(deadline) returns (address) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                GET_USER_ID_TYPEHASH,
-                user,
-                deadline
-            )
-        );
-        if (!_verifySignature(structHash, user, signature)) revert EIPError();
-        return _getVirtualAddress(user);
+        EIP712Permit memory permit
+    ) external view returns (address) {
+        if (!_verifyPermit(permit, PermitLabel.VIRTUAL_ADDRESS)) revert EIPError();
+        return _getVirtualAddress(permit.owner);
     }
 }

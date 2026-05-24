@@ -105,7 +105,7 @@ abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP
 
     }
 
-    function _spendAllowance(
+    function _checkSpendAllowance(
         address owner,
         address spender,
         uint256 value
