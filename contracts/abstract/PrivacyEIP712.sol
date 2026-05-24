@@ -41,6 +41,11 @@ abstract contract PrivacyEIP712 is PrivacyERC20Error {
         SignatureRSV signature;
     }
 
+    // Replay protection for signatures
+    mapping(bytes32 => bool) internal _usedSignatures;
+
+    // ====================================================================================================
+
     modifier validDeadline(uint256 deadline) {
         if (block.timestamp > deadline) revert ExpiredDeadline();
         _;
@@ -97,5 +102,28 @@ abstract contract PrivacyEIP712 is PrivacyERC20Error {
         );
 
         return _verifySignature(structHash, permit.owner, permit.signature);
+    }
+
+        // Replay protection signature checking
+    function _getHash(
+        SignatureRSV memory signature
+    ) internal pure returns (bytes32) {
+        return
+            keccak256(abi.encodePacked(signature.r, signature.s, signature.v));
+    }
+
+    function _isSignatureUsed(
+        SignatureRSV memory signature
+    ) internal view returns (bool) {
+        bytes32 sigHash = _getHash(signature);
+        return _usedSignatures[sigHash];
+    }
+
+    function _checkSignatureUsed(
+        SignatureRSV memory signature
+    ) internal view returns (bool) {
+        bool isUsed = _isSignatureUsed(signature);
+        if (isUsed) revert InvalidSignature();
+        return isUsed;
     }
 }

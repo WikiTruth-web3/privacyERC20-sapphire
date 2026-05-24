@@ -21,7 +21,7 @@ import {PrivacyERC20Internal} from "./abstract/PrivacyERC20Internal.sol";
  * @title PrivacyERC20
  * @notice Privacy ERC20 Token implementing balance mapping via random userId
  */
-contract PrivacyERC20With is
+contract PrivacyERC20 is
     Context,
     IERC20Metadata,
     IERC20Errors,
@@ -51,7 +51,7 @@ contract PrivacyERC20With is
     }
 
     function symbol() public view virtual returns (string memory) {
-        return string(abi.encodePacked(underlyingToken.symbol(), ".P"));
+        return string(abi.encodePacked(underlyingToken.symbol(), ".Privacy"));
     }
 
     function decimals() public view virtual returns (uint8) {
@@ -64,12 +64,21 @@ contract PrivacyERC20With is
 
     // Balance query
     function balanceOf(address account) public view virtual returns (uint256) {
-        // Contract addresses can be queried publicly, EOA accounts must query their own balance
+        // Contract addresses and caller's EOA can be queried publicly.
+        // If it's a contract or msg.sender, we resolve it as a real address.
+        // Otherwise, we treat the account parameter directly as a virtual address.
         if (account.code.length > 0 || account == _msgSender()) {
-            bytes32 userId = _getUserId(account);
-            return _decryptBalance(userId);
+            address virtualAddr = _getVirtualAddress(account);
+            return _decryptBalance(virtualAddr);
         }
-        return 0;
+        return _decryptBalance(account);
+    }
+
+    function _checkContracts(address addr) internal view returns(address) {
+        if (addr.code.length > 0 ) {
+            return _getVirtualAddress(addr);
+        }
+        return addr;
     }
 
     // Allowance query
@@ -77,18 +86,19 @@ contract PrivacyERC20With is
         address owner,
         address spender
     ) public view virtual returns (uint256) {
-        // Only allow owner or spender to view
-        if (owner == _msgSender() || spender == _msgSender()) {
-            bytes32 ownerId = _getUserId(owner);
-            bytes32 spenderId = _getUserId(spender);
-            return _allowances[ownerId][spenderId];
-        }
-        return 0;
+
+        address ownerVirtual = _checkContracts(owner);
+        address spenderVirtual = _checkContracts(spender);
+
+        return _allowances[ownerVirtual][spenderVirtual];
     }
 
     // Standard transfer
     function transfer(address to, uint256 value) public virtual returns (bool) {
-        _transfer(_msgSender(), to, value);
+        address fromVirtual = _getVirtualAddress(_msgSender());
+
+        address toVirtual = _checkContracts(to);
+        _transfer(fromVirtual, toVirtual, value);
         return true;
     }
 
@@ -97,7 +107,9 @@ contract PrivacyERC20With is
         address spender,
         uint256 value
     ) public virtual returns (bool) {
-        _approve(_msgSender(), spender, value);
+        address ownerVirtual = _getVirtualAddress(_msgSender());
+        address spenderVirtual = _checkContracts(spender);
+        _approve(ownerVirtual, spenderVirtual, value);
         return true;
     }
 
@@ -107,8 +119,12 @@ contract PrivacyERC20With is
         address to,
         uint256 value
     ) public virtual returns (bool) {
-        _spendAllowance(from, _msgSender(), value);
-        _transfer(from, to, value);
+        address ownerVirtual = _checkContracts(from);
+        address senderVirtual = _getVirtualAddress(_msgSender());
+        address toVirtual = _checkContracts(to);
+
+        _spendAllowance(ownerVirtual, senderVirtual, value);
+        _transfer(ownerVirtual, toVirtual, value);
         return true;
     }
 
@@ -119,8 +135,8 @@ contract PrivacyERC20With is
     ) external view returns (uint256) {
         if (!_verifyPermit(permit, PermitLabel.VIEW)) revert EIPError();
 
-        bytes32 ownerId = _getUserId(permit.owner);
-        return _decryptBalance(ownerId);
+        address ownerVirtual = _getVirtualAddress(permit.owner);
+        return _decryptBalance(ownerVirtual);
     }
 
     function allowanceWithPermit(
@@ -128,25 +144,31 @@ contract PrivacyERC20With is
     ) external view returns (uint256) {
         if (!_verifyPermit(permit, PermitLabel.VIEW)) revert EIPError();
         
-        bytes32 ownerId = _getUserId(permit.owner);
-        bytes32 spenderId = _getUserId(permit.spender);
-        return _allowances[ownerId][spenderId];
+        address ownerVirtual = _getVirtualAddress(permit.owner);
+        address spenderVirtual = _checkContracts(permit.spender);
+        return _allowances[ownerVirtual][spenderVirtual];
     }
 
+    // Note: in transferWithPermit, permit.owner is a real address and permit.spender acts as a virtual address (destination)
     function transferWithPermit(
         EIP712Permit memory permit
     ) external nonReentrant uniqueSignature(permit.signature) {
         if (!_verifyPermit(permit, PermitLabel.TRANSFER)) revert EIPError();
 
-        _transfer(permit.owner, permit.spender, permit.amount);
+        address fromVirtual = _getVirtualAddress(permit.owner);
+        address toVirtual = _checkContracts(permit.spender);
+        _transfer(fromVirtual, toVirtual, permit.amount);
     }
 
+    // Note: in approveWithPermit, permit.owner is a real address and permit.spender acts as a virtual address (spender)
     function approveWithPermit(
         EIP712Permit memory permit
     ) external nonReentrant uniqueSignature(permit.signature) {
         if (!_verifyPermit(permit, PermitLabel.APPROVE)) revert EIPError();
 
-        _approve(permit.owner, permit.spender, permit.amount);
+        address ownerVirtual = _getVirtualAddress(permit.owner);
+        address spenderVirtual = _checkContracts(permit.spender);
+        _approve(ownerVirtual, spenderVirtual, permit.amount);
     }
 
     // ===============================================================================================
@@ -156,19 +178,20 @@ contract PrivacyERC20With is
 
         underlyingToken.transferFrom(msg.sender, address(this), amount);
 
-        bytes32 senderId = _getUserId(msg.sender);
-        uint256 currentBalance = _decryptBalance(senderId);
-        _setEncryptedBalance(senderId, currentBalance + amount);
+        address senderVirtual = _getVirtualAddress(msg.sender);
+        uint256 currentBalance = _decryptBalance(senderVirtual);
+        _setEncryptedBalance(senderVirtual, currentBalance + amount);
     }
 
+    // Note: unwrap requires msg.sender to be a real address, debiting from their real user KDF-derived identity balance
     function unwrap(uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
 
-        bytes32 senderId = _getUserId(msg.sender);
-        uint256 currentBalance = _decryptBalance(senderId);
+        address senderVirtual = _getVirtualAddress(msg.sender);
+        uint256 currentBalance = _decryptBalance(senderVirtual);
         if (currentBalance < amount) revert InsufficientBalance();
 
-        _setEncryptedBalance(senderId, currentBalance - amount);
+        _setEncryptedBalance(senderVirtual, currentBalance - amount);
         underlyingToken.transfer(msg.sender, amount);
     }
 
@@ -179,12 +202,12 @@ contract PrivacyERC20With is
         return _isSignatureUsed(signature);
     }
 
-    // userId lookup via EIP-712 for EOA
-    function getMyUserId(
+    // New interface to query a user's virtual address via EIP-712 signature (for EOA)
+    function getMyVirtualAddress(
         address user,
         uint256 deadline,
         SignatureRSV memory signature
-    ) external view validDeadline(deadline) returns (bytes32) {
+    ) external view validDeadline(deadline) returns (address) {
         bytes32 structHash = keccak256(
             abi.encode(
                 GET_USER_ID_TYPEHASH,
@@ -193,14 +216,6 @@ contract PrivacyERC20With is
             )
         );
         if (!_verifySignature(structHash, user, signature)) revert EIPError();
-        return _getUserId(user);
-    }
-
-    // userId lookup for Smart Contracts (publicly available)
-    function getContractUserId(
-        address contractAddr
-    ) external view returns (bytes32) {
-        if (contractAddr.code.length == 0) revert NotContractAddress();
-        return _getUserId(contractAddr);
+        return _getVirtualAddress(user);
     }
 }

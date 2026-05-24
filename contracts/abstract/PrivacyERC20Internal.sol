@@ -24,11 +24,10 @@ import {PrivacyEIP712} from "./PrivacyEIP712.sol";
 abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP712 {
     // Encrypted state variables
     bytes32 internal _globalNonce;
-    mapping(bytes32 => bytes) internal _encryptedBalances;
-    mapping(bytes32 => mapping(bytes32 => uint256)) internal _allowances;
-
-    // Replay protection for signatures
-    mapping(bytes32 => bool) internal _usedSignatures;
+    // The address is not real user address, 
+    // it is the address of the user's identity contract 'virtual address'
+    mapping(address => bytes) internal _encryptedBalances;
+    mapping(address => mapping(address => uint256)) internal _allowances;
 
     // Underlying ERC20 token for wrap/unwrap
     IERC20Metadata public immutable underlyingToken;
@@ -52,8 +51,8 @@ abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP
         return Sapphire.encrypt(bytes32(0), _globalNonce, data, "");
     }
 
-    function _decryptBalance(bytes32 userId) internal view returns (uint256) {
-        bytes memory data = _encryptedBalances[userId];
+    function _decryptBalance(address user) internal view returns (uint256) {
+        bytes memory data = _encryptedBalances[user];
         if (data.length == 0) {
             return 0;
         }
@@ -68,11 +67,12 @@ abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP
         return abi.decode(decryptedData, (uint256));
     }
 
-    function _setEncryptedBalance(bytes32 userId, uint256 balance) internal {
-        _encryptedBalances[userId] = _encryptBalance(balance);
+    // =========================================================================================
+
+    function _setEncryptedBalance(address virtualAddr, uint256 balance) internal {
+        _encryptedBalances[virtualAddr] = _encryptBalance(balance);
     }
 
-    // Core transfer logic
     function _transfer(address from, address to, uint256 value) internal {
         if (from == address(0)) {
             revert ERC20InvalidSender(address(0));
@@ -81,21 +81,19 @@ abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP
             revert ERC20InvalidReceiver(address(0));
         }
 
-        bytes32 fromId = _getUserId(from);
-        bytes32 toId = _getUserId(to);
-
-        uint256 fromBalance = _decryptBalance(fromId);
+        uint256 fromBalance = _decryptBalance(from);
         if (fromBalance < value) {
             revert ERC20InsufficientBalance(from, fromBalance, value);
         }
 
-        uint256 toBalance = _decryptBalance(toId);
+        uint256 toBalance = _decryptBalance(to);
 
-        _setEncryptedBalance(fromId, fromBalance - value);
-        _setEncryptedBalance(toId, toBalance + value);
+        _setEncryptedBalance(from, fromBalance - value);
+        _setEncryptedBalance(to, toBalance + value);
+
+        // note: we don't emit the Transfer event for privacy protection
     }
 
-    // Core approve logic
     function _approve(address owner, address spender, uint256 value) internal {
         if (owner == address(0)) {
             revert ERC20InvalidApprover(address(0));
@@ -103,22 +101,16 @@ abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP
         if (spender == address(0)) {
             revert ERC20InvalidSpender(address(0));
         }
-        
-        bytes32 ownerId = _getUserId(owner);
-        bytes32 spenderId = _getUserId(spender);
-        _allowances[ownerId][spenderId] = value;
+        _allowances[owner][spender] = value;
+
     }
 
-    // Spend allowance helper
     function _spendAllowance(
         address owner,
         address spender,
         uint256 value
     ) internal {
-        bytes32 ownerId = _getUserId(owner);
-        bytes32 spenderId = _getUserId(spender);
-        uint256 currentAllowance = _allowances[ownerId][spenderId];
-        
+        uint256 currentAllowance = _allowances[owner][spender];
         if (currentAllowance < type(uint256).max) {
             if (currentAllowance < value) {
                 revert ERC20InsufficientAllowance(
@@ -133,26 +125,4 @@ abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP
         }
     }
 
-    // Replay protection signature checking
-    function _getHash(
-        SignatureRSV memory signature
-    ) internal pure returns (bytes32) {
-        return
-            keccak256(abi.encodePacked(signature.r, signature.s, signature.v));
-    }
-
-    function _isSignatureUsed(
-        SignatureRSV memory signature
-    ) internal view returns (bool) {
-        bytes32 sigHash = _getHash(signature);
-        return _usedSignatures[sigHash];
-    }
-
-    function _checkSignatureUsed(
-        SignatureRSV memory signature
-    ) internal view returns (bool) {
-        bool isUsed = _isSignatureUsed(signature);
-        if (isUsed) revert InvalidSignature();
-        return isUsed;
-    }
 }

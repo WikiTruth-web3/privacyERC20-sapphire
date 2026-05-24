@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { getSigners_SapphireTestnet } from "../utils/signers-sapphire-testnet";
 import { ContractRunner } from "../utils/contract-runner";
 import { token_contracts_address } from "../utils/contracts_address";
-import { TaskMap, IMockERC20 } from "../types/token-fuctions";
+import { TaskMap, IMockERC20 } from "../types/privacy-erc20-fuctions";
 
 /**
  * MockERC20 (如 OfficialToken) 合约写入操作批处理脚本

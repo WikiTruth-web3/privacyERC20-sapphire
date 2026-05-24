@@ -4,24 +4,28 @@ import "@nomicfoundation/hardhat-ignition";
 import "@openzeppelin/hardhat-upgrades";
 import "hardhat-switch-network";
 import "@oasisprotocol/sapphire-hardhat";
-import "dotenv/config"
-import "./tasks"
+import dotenv from "dotenv";
+dotenv.config();
+dotenv.config({ path: ".env.account" });
+dotenv.config({ path: ".env.privacyERC20" });
+// import "./tasks"
 import "@nomicfoundation/hardhat-foundry";
 import "hardhat-abi-exporter";
 import { hardhat_accounts } from "./account_hardhat";
 
 
-const sapphire_testnet_admin = process.env.ADMIN_PRIVATE_KEY_EVM ? process.env.ADMIN_PRIVATE_KEY_EVM : "";
-const sapphire_testnet_minter = process.env.MINTER_PRIVATE_KEY_EVM ? process.env.MINTER_PRIVATE_KEY_EVM : "";
-const sapphire_testnet_buyer = process.env.BUYER_PRIVATE_KEY_EVM ? process.env.BUYER_PRIVATE_KEY_EVM : "";
-const sapphire_testnet_buyer2 = process.env.BUYER2_PRIVATE_KEY_EVM ? process.env.BUYER2_PRIVATE_KEY_EVM : "";
-const sapphire_testnet_daoFundManager = process.env.DAO_FUND_MANAGER_PRIVATE_KEY_EVM ? process.env.DAO_FUND_MANAGER_PRIVATE_KEY_EVM : "";
+// const sapphire_testnet_admin = process.env.ADMIN_PRIVATE_KEY_EVM ? process.env.ADMIN_PRIVATE_KEY_EVM : "";
+// const sapphire_testnet_minter = process.env.MINTER_PRIVATE_KEY_EVM ? process.env.MINTER_PRIVATE_KEY_EVM : "";
+// const sapphire_testnet_buyer = process.env.BUYER_PRIVATE_KEY_EVM ? process.env.BUYER_PRIVATE_KEY_EVM : "";
+// const sapphire_testnet_buyer2 = process.env.BUYER2_PRIVATE_KEY_EVM ? process.env.BUYER2_PRIVATE_KEY_EVM : "";
+// const sapphire_testnet_daoFundManager = process.env.DAO_FUND_MANAGER_PRIVATE_KEY_EVM ? process.env.DAO_FUND_MANAGER_PRIVATE_KEY_EVM : "";
 
-// =============================================================
-const sapphire_testnet_user = process.env.Privacy_ERC20_User_PRIVATE_KEY_EVM ? process.env.Privacy_ERC20_User_PRIVATE_KEY_EVM : "";
-const sapphire_testnet_user_01 = process.env.Privacy_ERC20_User_01_PRIVATE_KEY_EVM ? process.env.Privacy_ERC20_User_01_PRIVATE_KEY_EVM : "";
+const dummyKey = "0x0000000000000000000000000000000000000000000000000000000000000001";
 
-const sapphire_mainnet_admin = process.env.ADMIN_PRIVATE_KEY_EVM ? process.env.ADMIN_PRIVATE_KEY_EVM : "";
+const sapphire_testnet_erc20_deployer = process.env.ERC20_deployer_PRIVATE_KEY_EVM || dummyKey;
+const sapphire_testnet_erc20_user_01 = process.env.ERC20_user_01_PRIVATE_KEY_EVM || process.env.ERC20_User_01_PRIVATE_KEY_EVM || dummyKey;
+
+const sapphire_mainnet_admin = process.env.ADMIN_PRIVATE_KEY_EVM || dummyKey;
 
 
 const config: HardhatUserConfig = {
@@ -101,22 +105,23 @@ const config: HardhatUserConfig = {
     runOnCompile: true,   // 开启编译时自动导出
     clear: true,          // 每次导出前清空目录
     flat: false,          // 按路径层级导出，避免同名合约（如 AddressManager）输出冲突
-    only: [':BlindBox$', ':Exchange$', ':FundManager$', ':UserManager$', ':AddressManager$', ':Forwarder$', 'SiweAuth'], // 可选：只导出匹配名称的合约（支持正则）
+    only: [':BlindBox$', ':Exchange$', ':FundManager$', ':UserManager$', ':AddressManager$', ':Forwarder$', 'SiweAuth', 
+      ':PrivacyERC20$', ':PrivacyWROSE$', ':WrappedROSE$', ':MockERC20$'], 
     spacing: 2,           // JSON 缩进格数
     format: "json",       // 导出格式，支持 "json" 或 "minimal" (极简模式)
   },
-  paths: {
-    sources: "./contracts-eth", 
-    tests: "./test",
-    cache: "./cache/contracts-eth",
-    artifacts: "./artifacts"
-  },
   // paths: {
-  //   sources: "./contracts", 
+  //   sources: "./contracts-eth", 
   //   tests: "./test",
-  //   cache: "./cache/contracts",
-  //   artifacts: "./artifacts/contracts"
+  //   cache: "./cache/contracts-eth",
+  //   artifacts: "./artifacts"
   // },
+  paths: {
+    sources: "./contracts", 
+    tests: "./test",
+    cache: "./cache/contracts",
+    artifacts: "./artifacts/contracts"
+  },
   
   mocha: {
     timeout: 40000
@@ -162,13 +167,8 @@ const config: HardhatUserConfig = {
       url: "https://testnet.sapphire.oasis.io",
       chainId: 0x5aff, // 23295 
       accounts: [
-        sapphire_testnet_admin,
-        sapphire_testnet_minter,
-        sapphire_testnet_buyer,
-        sapphire_testnet_buyer2,
-        sapphire_testnet_user,
-        sapphire_testnet_user_01,
-        sapphire_testnet_daoFundManager,
+        sapphire_testnet_erc20_deployer,
+        sapphire_testnet_erc20_user_01,
       ]
     },
   },

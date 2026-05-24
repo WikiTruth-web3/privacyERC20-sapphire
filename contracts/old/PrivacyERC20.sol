@@ -235,7 +235,7 @@ contract PrivacyERC20 is
         }
         _allowances[owner][spender] = value;
 
-        emit Approval(address(0), spender, value);
+        // emit Approval(address(0), spender, value);
     }
 
     function _spendAllowance(

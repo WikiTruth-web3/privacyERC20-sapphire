@@ -11,6 +11,7 @@ import {
  */
 abstract contract IdentitySalt {
     error EmptyIdentitySalt();
+    error ZeroAddress();
     
     // Master secret for user identity derivation
     bytes32 private _identitySalt;
@@ -23,21 +24,24 @@ abstract contract IdentitySalt {
     }
 
     /**
-     * @dev Derive a cryptographically secure, irreversible userId from address
+     * @dev Derive a cryptographically secure, irreversible raw userId from real address
      */
-    function _getUserId(address user_) internal view returns (bytes32) {
-        if (user_ == address(0)) return bytes32(0);
+    function _getVirtualAddress(address addr) internal view returns (address) {
+        if (addr == address(0)) revert ZeroAddress();
 
         if (_identitySalt == bytes32(0)) revert EmptyIdentitySalt();
 
         // Convert address to bytes32 to use as salt/context for derivation
-        bytes32 contextSalt = bytes32(uint256(uint160(user_)));
+        bytes32 contextSalt = bytes32(uint256(uint160(addr)));
 
         // Use Sapphire's native HKDF-based symmetric key derivation
-        return
+        bytes32 id =  
             Sapphire.deriveSymmetricKey(
                 Sapphire.Curve25519PublicKey.wrap(contextSalt),
                 Sapphire.Curve25519SecretKey.wrap(_identitySalt)
             );
+
+        return address(uint160(uint256(id)));
     }
+
 }

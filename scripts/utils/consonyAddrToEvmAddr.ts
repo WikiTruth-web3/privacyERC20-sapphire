@@ -1,4 +1,4 @@
-import { user_oasis_WikiTruth } from "../../account_admin";
+import { user_erc20_oasis } from "../../account_privacy_erc20";
 import { ethers } from "ethers";
 import * as crypto from "crypto";
 import * as dotenv from "dotenv";
@@ -47,7 +47,7 @@ async function main() {
     console.log("=== Oasis私钥转EVM私钥转换工具 ===\n");
     
     // 获取所有Oasis账户
-    const oasisAccounts = user_oasis_WikiTruth;
+    const oasisAccounts = user_erc20_oasis;
     
     console.log("转换结果：\n");
     console.log("账户类型".padEnd(12) + "Oasis地址".padEnd(50) + "EVM地址".padEnd(45) + "EVM私钥");
