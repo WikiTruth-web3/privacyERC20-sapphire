@@ -21,6 +21,7 @@ export interface EIP712PermitResult {
     spender: string;
     amount: bigint;
     deadline: number;
+    nonce: bigint;
     signature: {
         r: string;
         s: string;
@@ -38,6 +39,7 @@ export async function createEIP712Permit(
     mode: PermitType,
     contractAddress: string,
     chainId: number,
+    nonce: bigint | number,
     customDeadline?: number
 ): Promise<EIP712PermitResult> {
     const signerAddress = await signer.getAddress();
@@ -57,7 +59,8 @@ export async function createEIP712Permit(
             { name: "owner", type: "address" },
             { name: "spender", type: "address" },
             { name: "amount", type: "uint256" },
-            { name: "deadline", type: "uint256" }
+            { name: "deadline", type: "uint256" },
+            { name: "nonce", type: "uint256" }
         ]
     };
 
@@ -66,7 +69,8 @@ export async function createEIP712Permit(
         owner: signerAddress,
         spender: spenderAddress,
         amount: BigInt(amount),
-        deadline: deadline
+        deadline: deadline,
+        nonce: BigInt(nonce)
     };
 
     const rawSignature = await signer.signTypedData(domain, types, value);
@@ -78,6 +82,7 @@ export async function createEIP712Permit(
         spender: spenderAddress,
         amount: BigInt(amount),
         deadline: deadline,
+        nonce: BigInt(nonce),
         signature: {
             r: sig.r,
             s: sig.s,

@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { erc20_address_testnet } from "./utils/erc20_address";
+import { erc20_address_testnet } from "../signers-contracts/erc20_address";
 
 async function main() {
     const provider = ethers.provider;

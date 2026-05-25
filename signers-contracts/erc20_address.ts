@@ -1,4 +1,4 @@
-import deploymentERC20 from "../../deployments/sapphire-testnet-erc20.json";
+import deploymentERC20 from "../deployments/sapphire-testnet-erc20.json";
 
 
 

@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { getSigners_SapphireTestnet } from "../utils/signers-sapphire-testnet";
+import { getSigners_SapphireTestnet } from "../../signers-contracts/signers-sapphire-testnet";
 import { ContractRunner } from "../utils/contract-runner";
 import { token_contracts_address } from "../utils/contracts_address";
 import { TaskMap, IMockERC20 } from "../types/privacy-erc20-fuctions";

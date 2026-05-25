@@ -8,6 +8,7 @@ export enum PermitType {
     View = 0,
     Transfer = 1,
     Approve = 2
+    
 }
 
 /**
