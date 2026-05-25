@@ -9,6 +9,8 @@ import {IWROSE} from "./interfaces/IWROSE.sol";
  * @notice Privacy WROSE Token implementing native ROSE deposit and withdraw
  */
 contract PrivacyWROSE is PrivacyERC20 {
+
+    error TransferFailed();
     // Prevent receive function interference when withdrawing
     bool private _withdrawing;
 
@@ -44,7 +46,8 @@ contract PrivacyWROSE is PrivacyERC20 {
         IWROSE(address(underlyingToken)).withdraw(amount);
 
         // transfer native ROSE to user's real address
-        payable(msg.sender).transfer(amount);
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) revert TransferFailed();
 
         _withdrawing = false;
     }

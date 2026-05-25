@@ -4,13 +4,14 @@ pragma solidity ^0.8.24;
 import {
     SignatureRSV
 } from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
-import {PrivacyERC20Error} from "../interfaces/PrivacyERC20Error.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {EIP712Errors} from "../interfaces/EIP712Errors.sol";
 
 /**
  * @title PrivacyEIP712
  * @notice Abstract contract handles EIP-712 domain separation, signature recovery, and validation
  */
-abstract contract PrivacyEIP712 is PrivacyERC20Error {
+abstract contract PrivacyEIP712 is EIP712Errors {
     // EIP-712 domain parameters
     bytes32 private constant EIP712_DOMAIN_TYPEHASH =
         keccak256(
@@ -20,7 +21,7 @@ abstract contract PrivacyEIP712 is PrivacyERC20Error {
 
     bytes32 public constant EIP_PERMIT_TYPEHASH =
         keccak256(
-            "EIP712Permit(uint8 label,address owner,address spender,uint256 amount,uint256 deadline)"
+            "EIP712Permit(uint8 label,address owner,address spender,uint256 amount,uint256 deadline,uint256 nonce)"
         );
 
     enum PermitLabel {
@@ -36,18 +37,26 @@ abstract contract PrivacyEIP712 is PrivacyERC20Error {
         address spender;
         uint256 amount;
         uint256 deadline;
+        uint256 nonce;
         SignatureRSV signature;
     }
 
     // Replay protection for signatures
     mapping(bytes32 => bool) internal _usedSignatures;
 
+    // Nonces for EIP712 permits
+    mapping(address => uint256) private _nonces;
+
+    function nonces(address owner) public view returns (uint256) {
+        return _nonces[owner];
+    }
+
+    function increaseNonce() external {
+        _nonces[msg.sender]++;
+    }
+
     // ====================================================================================================
 
-    modifier validDeadline(uint256 deadline) {
-        if (block.timestamp > deadline) revert ExpiredDeadline();
-        _;
-    }
 
     constructor(string memory name, string memory version) {
         DOMAIN_SEPARATOR = keccak256(
@@ -61,6 +70,19 @@ abstract contract PrivacyEIP712 is PrivacyERC20Error {
         );
     }
 
+        modifier validDeadline(uint256 deadline) {
+        if (block.timestamp > deadline) revert ExpiredDeadline();
+        _;
+    }
+
+    // Modifiers
+    modifier uniqueSignature(SignatureRSV memory signature) {
+        _checkSignatureUsed(signature);
+        _;
+        _usedSignatures[_getHash(signature)] = true;
+    }
+
+
     /**
      * @dev Verify typed data signature (EIP-712)
      */
@@ -73,7 +95,7 @@ abstract contract PrivacyEIP712 is PrivacyERC20Error {
             abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash)
         );
 
-        return owner == ecrecover(digest, uint8(rsv.v), rsv.r, rsv.s);
+        return owner == ECDSA.recover(digest, uint8(rsv.v), rsv.r, rsv.s);
     }
 
     /**
@@ -84,6 +106,7 @@ abstract contract PrivacyEIP712 is PrivacyERC20Error {
         PermitLabel label_
     ) internal view validDeadline(permit.deadline) returns (bool) {
         if (label_ != permit.label) revert InvalidPermitLabel();
+        if (permit.nonce != _nonces[permit.owner]) revert InvalidNonce();
         if (permit.label == PermitLabel.VIEW) {
             if (permit.amount != 0) revert InvalidPermitAmount();
         }
@@ -99,7 +122,8 @@ abstract contract PrivacyEIP712 is PrivacyERC20Error {
                 permit.owner,
                 permit.spender,
                 permit.amount,
-                permit.deadline
+                permit.deadline,
+                permit.nonce
             )
         );
 

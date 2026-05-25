@@ -6,11 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract WrappedROSE is ERC20 {
     // Custom error
     error MintPeriodNotOver();
-
-    // State variables for mint control
-    mapping(address => uint256) public mintDate;
-    uint256 public constant mintPeriod = 1 days;
-    uint256 public constant mintAmount = 1000;
+    error TransferFailed();
 
     // Events for deposit and withdraw
     event Deposit(address indexed dst, uint256 wad);
@@ -34,7 +30,8 @@ contract WrappedROSE is ERC20 {
      */
     function withdraw(uint256 amount_) public {
         _burn(msg.sender, amount_);
-        payable(msg.sender).transfer(amount_);
+        (bool success, ) = payable(msg.sender).call{value: amount_}("");
+        if (!success) revert TransferFailed();
         emit Withdrawal(msg.sender, amount_);
     }
 
@@ -43,17 +40,5 @@ contract WrappedROSE is ERC20 {
      */
     receive() external payable {
         deposit();
-    }
-
-    function mint(address to_) public {
-        if (block.timestamp - mintDate[to_] < mintPeriod)
-            revert MintPeriodNotOver();
-        _mint(to_, mintAmount * (10 ** decimals()));
-        mintDate[to_] = block.timestamp;
-    }
-
-    function burn(uint256 amount_) public {
-        address from = _msgSender();
-        _burn(from, amount_);
     }
 }

@@ -7,7 +7,7 @@ import {
 import {
     IERC20Errors
 } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+// import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {
     SignatureRSV
 } from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
@@ -16,26 +16,19 @@ import {
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {PrivacyERC20Internal} from "./abstract/PrivacyERC20Internal.sol";
-
+import {PrivacyERC20Errors} from "./interfaces/PrivacyERC20Errors.sol";
 /**
  * @title PrivacyERC20
  * @notice Privacy ERC20 Token implementing balance mapping via random userId
  */
 contract PrivacyERC20 is
-    Context,
     IERC20Metadata,
     IERC20Errors,
+    PrivacyERC20Errors,
     ReentrancyGuard,
     PrivacyERC20Internal
 {
     error NotContractAddress();
-
-    // Modifiers
-    modifier uniqueSignature(SignatureRSV memory signature) {
-        _checkSignatureUsed(signature);
-        _;
-        _usedSignatures[_getHash(signature)] = true;
-    }
 
     // Constructor
     constructor(
@@ -68,7 +61,7 @@ contract PrivacyERC20 is
         // Contract addresses and caller's EOA can be queried publicly.
         // If it's a contract or msg.sender, we resolve it as a real address.
         // Otherwise, we treat the account parameter directly as a virtual address.
-        if (account.code.length > 0 || account == _msgSender()) {
+        if (account.code.length > 0 || account == msg.sender) {
             address virtualAddr = _getVirtualAddress(account);
             return _decryptBalance(virtualAddr);
         }
@@ -96,7 +89,7 @@ contract PrivacyERC20 is
 
     // Standard transfer
     function transfer(address to, uint256 value) public virtual returns (bool) {
-        address fromVirtual = _getVirtualAddress(_msgSender());
+        address fromVirtual = _getVirtualAddress(msg.sender);
 
         address toVirtual = _checkContracts(to);
         _transfer(fromVirtual, toVirtual, value);
@@ -108,7 +101,7 @@ contract PrivacyERC20 is
         address spender,
         uint256 value
     ) public virtual returns (bool) {
-        address ownerVirtual = _getVirtualAddress(_msgSender());
+        address ownerVirtual = _getVirtualAddress(msg.sender);
         address spenderVirtual = _checkContracts(spender);
         _approve(ownerVirtual, spenderVirtual, value);
         return true;
@@ -120,7 +113,7 @@ contract PrivacyERC20 is
         address to,
         uint256 value
     ) public virtual returns (bool) {
-        address senderVirtual = _getVirtualAddress(_msgSender());
+        address senderVirtual = _getVirtualAddress(msg.sender);
         address fromVirtual = _checkContracts(from);
         address toVirtual = _checkContracts(to);
 

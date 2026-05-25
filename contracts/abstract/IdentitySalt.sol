@@ -31,15 +31,8 @@ abstract contract IdentitySalt {
 
         if (_identitySalt == bytes32(0)) revert EmptyIdentitySalt();
 
-        // Convert address to bytes32 to use as salt/context for derivation
-        bytes32 contextSalt = bytes32(uint256(uint160(addr)));
-
-        // Use Sapphire's native HKDF-based symmetric key derivation
-        bytes32 id =  
-            Sapphire.deriveSymmetricKey(
-                Sapphire.Curve25519PublicKey.wrap(contextSalt),
-                Sapphire.Curve25519SecretKey.wrap(_identitySalt)
-            );
+        // Use Keccak256 with private master salt for cryptographically secure derivation inside TEE
+        bytes32 id = keccak256(abi.encodePacked("VirtualAddress", _identitySalt, addr));
 
         return address(uint160(uint256(id)));
     }

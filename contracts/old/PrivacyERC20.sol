@@ -8,7 +8,7 @@ import {
 import {
     IERC20Errors
 } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+// import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 import {
     SignatureRSV
@@ -20,13 +20,19 @@ import {
     Sapphire
 } from "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol";
 
-import {PrivacyERC20Error} from "../interfaces/PrivacyERC20Error.sol";
+import {EIP712Errors} from "../interfaces/EIP712Errors.sol";
+import {PrivacyERC20Errors} from "../interfaces/PrivacyERC20Errors.sol";
+
+/***
+  * NOTE This is old version of PrivacyERC20
+  * @notice it`s use real address , not virtual address, so we need lost that
+ */
 
 contract PrivacyERC20 is
-    Context,
     IERC20Metadata,
     IERC20Errors,
-    PrivacyERC20Error,
+    EIP712Errors,
+    PrivacyERC20Errors,
     ReentrancyGuard
 {
     // encrypt related
@@ -129,7 +135,7 @@ contract PrivacyERC20 is
     // only allow view own balance, if query is not own address, return 0 (privacy protection)
     function balanceOf(address account) public view virtual returns (uint256) {
         // only allow view own balance, if query is not own address, return 0 (privacy protection)
-        if (account != _msgSender()) {
+        if (account != msg.sender) {
             return 0;
         }
         return _decryptBalance(account);
@@ -141,7 +147,7 @@ contract PrivacyERC20 is
         address spender
     ) public view virtual returns (uint256) {
         // only allow view own allowance, if query is not own address, return 0 (privacy protection)
-        if (owner != _msgSender() && spender != _msgSender()) {
+        if (owner != msg.sender && spender != msg.sender) {
             return 0;
         }
         return _allowances[owner][spender];
@@ -150,7 +156,7 @@ contract PrivacyERC20 is
     // ==================== Excuate function ====================
 
     function transfer(address to, uint256 value) public virtual returns (bool) {
-        _transfer(_msgSender(), to, value);
+        _transfer(msg.sender, to, value);
         return true;
     }
 
@@ -158,7 +164,7 @@ contract PrivacyERC20 is
         address spender,
         uint256 value
     ) public virtual returns (bool) {
-        _approve(_msgSender(), spender, value);
+        _approve(msg.sender, spender, value);
         return true;
     }
 
@@ -167,7 +173,7 @@ contract PrivacyERC20 is
         address to,
         uint256 value
     ) public virtual returns (bool) {
-        _spendAllowance(from, _msgSender(), value);
+        _spendAllowance(from, msg.sender, value);
         _transfer(from, to, value);
         return true;
     }
