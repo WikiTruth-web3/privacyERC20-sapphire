@@ -120,12 +120,11 @@ contract PrivacyERC20 is
         address to,
         uint256 value
     ) public virtual returns (bool) {
-        address ownerVirtual = _checkContracts(from);
         address senderVirtual = _getVirtualAddress(_msgSender());
+        address fromVirtual = _checkContracts(from);
         address toVirtual = _checkContracts(to);
 
-        _checkSpendAllowance(ownerVirtual, senderVirtual, value);
-        _transfer(ownerVirtual, toVirtual, value);
+        _transferFrom(fromVirtual, toVirtual, senderVirtual, value);
         return true;
     }
 

@@ -37,12 +37,13 @@ abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP
         bytes memory pers_
     )
         IdentitySalt(pers_)
-        PrivacyEIP712("Privacy ERC20 Token with UserId", "1")
+        PrivacyEIP712("Privacy ERC20 Token with Virtual Address", "1")
     {
         underlyingToken = IERC20Metadata(underlyingToken_);
         _globalNonce = bytes32(Sapphire.randomBytes(32, ""));
     }
 
+    // =========================================================================================
     // Privacy encryption & decryption
     function _encryptBalance(
         uint256 balance
@@ -67,11 +68,11 @@ abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP
         return abi.decode(decryptedData, (uint256));
     }
 
-    // =========================================================================================
-
     function _setEncryptedBalance(address virtualAddr, uint256 balance) internal {
         _encryptedBalances[virtualAddr] = _encryptBalance(balance);
     }
+
+    // =========================================================================================
 
     function _transfer(address from, address to, uint256 value) internal {
         if (from == address(0)) {
@@ -119,10 +120,22 @@ abstract contract PrivacyERC20Internal is IERC20Errors, IdentitySalt, PrivacyEIP
                     value
                 );
             }
+            // Update the allowance
             unchecked {
                 _approve(owner, spender, currentAllowance - value);
             }
         }
+    }
+
+        // Standard transferFrom
+    function _transferFrom(
+        address from,
+        address to,
+        address sender,
+        uint256 value
+    ) internal {
+        _checkSpendAllowance(from, sender, value);
+        _transfer(from, to, value);
     }
 
 }
